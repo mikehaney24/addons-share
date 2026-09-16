@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  macOS LaunchAgent for the coordinator, to run on the home server.
+
+  Install to ~/Library/LaunchAgents/com.wowsync.coordinator.plist, then:
+      launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.wowsync.coordinator.plist
+
+  The server needs to stay up while nobody is logged in, so on the home server
+  either enable automatic login, or move this to /Library/LaunchDaemons and
+  bootstrap it into the `system` domain instead.
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.wowsync.coordinator</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>__WOWSYNC__</string>
+        <string>serve</string>
+        <string>--host</string>
+        <string>0.0.0.0</string>
+        <string>--port</string>
+        <string>7373</string>
+        <string>--token</string>
+        <string>__TOKEN__</string>
+    </array>
+
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+
+    <key>StandardOutPath</key>
+    <string>__HOME__/Library/Logs/wowsync-coordinator.log</string>
+    <key>StandardErrorPath</key>
+    <string>__HOME__/Library/Logs/wowsync-coordinator.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    </dict>
+</dict>
+</plist>

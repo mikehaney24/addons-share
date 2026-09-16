@@ -1,0 +1,62 @@
+# Example configuration, identical in shape to what `wowsync init` writes.
+# The real one lives at ~/.config/wowsync/wowsync.toml (Linux) or
+# ~/Library/Application Support/wowsync/wowsync.toml (macOS).
+
+# wowsync configuration -- see docs/ in the repository for the full reference.
+
+# What this computer is called in history and in lease messages.
+machine_id = 'mac-studio'
+
+[server]
+# The coordinator decides which machine currently owns the live state.
+# Leave url empty to sync without one (no protection against playing on both).
+url = 'http://homeserver.local:7373'
+token = 'paste-the-token-from-the-server-here'
+# Git does the actual data transfer. SSH is used so large addon folders and
+# resumed transfers behave, and so there is no web service in the data path.
+git_remote = 'ssh://you@homeserver.local/Users/you/wowsync/repos/forever.git'
+
+[profile.forever]
+# The flavor directory: the one containing WTF/ and Interface/.
+game_dir = '/Applications/World of Warcraft Forever/_forever_'
+# How to recognise the running game. The default covers the macOS binary and
+# the Windows executable as Wine reports it; override if your build differs.
+process_match = '(World of Warcraft(?! Launcher)|\\bWow(Classic|T)?\\.exe\\b)'
+enabled = true
+
+[profile.forever.sync]
+# Extra paths to share, added to the defaults (addon folders, SavedVariables,
+# keybindings, macros, per-character addon enable state, Edit Mode layouts).
+include = []
+# Extra paths to keep out of sync entirely.
+exclude = []
+# Where a same-file collision between machines may be settled automatically in
+# the server's favour. Addon payloads qualify -- they are reinstallable.
+# Anything under WTF/ deliberately does not.
+auto_merge_prefixes = ["Interface/AddOns"]
+
+[profile.forever.machine_local]
+# Files that stay on the machine that wrote them. Config.wtf holds resolution,
+# graphics API, display mode and sound device; config-cache.wtf holds the
+# account and per-character copies of the same CVar store. These are versioned
+# per machine, so they are restorable, but they are never shared.
+files = [
+  "WTF/Config.wtf",
+  "WTF/Account/*/config-cache.wtf",
+  "WTF/Account/*/*/*/config-cache.wtf",
+]
+
+# Some addons keep machine-specific settings inside an otherwise shared
+# SavedVariables file. Name the saved globals that should stay local and they
+# are carved out of the shared copy and put back after every sync:
+#
+# [[profile.forever.machine_local.saved_variables]]
+# file = "WTF/Account/*/SavedVariables/ElvUI.lua"
+# globals = ["ElvPrivateDB"]
+
+[daemon]
+poll_seconds = 2
+remote_poll_seconds = 30
+snapshot_minutes = 5
+lease_ttl_seconds = 180
+heartbeat_seconds = 30

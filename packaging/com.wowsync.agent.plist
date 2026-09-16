@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  macOS LaunchAgent for the wowsync background agent.
+
+  Install to ~/Library/LaunchAgents/com.wowsync.agent.plist, then:
+      launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.wowsync.agent.plist
+  Replace __HOME__ with your home directory and __WOWSYNC__ with the path
+  printed by `command -v wowsync`.
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.wowsync.agent</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>__WOWSYNC__</string>
+        <string>daemon</string>
+    </array>
+
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+    </dict>
+
+    <!-- Wait a little before restarting so a crash loop cannot spin. -->
+    <key>ThrottleInterval</key>
+    <integer>30</integer>
+
+    <key>StandardOutPath</key>
+    <string>__HOME__/Library/Logs/wowsync-agent.log</string>
+    <key>StandardErrorPath</key>
+    <string>__HOME__/Library/Logs/wowsync-agent.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    </dict>
+
+    <key>ProcessType</key>
+    <string>Background</string>
+    <key>LowPriorityIO</key>
+    <true/>
+</dict>
+</plist>

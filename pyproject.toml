@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "wowsync"
+version = "0.1.0"
+description = "Hand a World of Warcraft addon and settings state between computers, with history."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { file = "LICENSE" }
+authors = [{ name = "Michael Haney" }]
+# No runtime dependencies on purpose: this has to install on a Mac, a Linux
+# box and a home server without a package manager getting in the way. The only
+# external program it needs is git.
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=7"]
+
+[project.scripts]
+wowsync = "wowsync.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["wowsync*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = ["error"]

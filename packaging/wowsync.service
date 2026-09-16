@@ -1,0 +1,35 @@
+# systemd user unit for the wowsync background agent (the Linux gaming machine).
+#
+#   install -Dm644 packaging/wowsync.service ~/.config/systemd/user/wowsync.service
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now wowsync
+#
+# So the agent keeps running when you are not logged in graphically:
+#   sudo loginctl enable-linger "$USER"
+
+[Unit]
+Description=wowsync background agent
+Documentation=https://github.com/mikehaney24/addons-share
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/wowsync daemon
+Restart=always
+RestartSec=30
+
+# The agent watches for the game process and touches files in the Proton
+# prefix; it is an ordinary user process and needs nothing more than that.
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectControlGroups=yes
+ProtectKernelTunables=yes
+RestrictSUIDSGID=yes
+
+# Give the game every scrap of CPU while it is running.
+Nice=10
+IOSchedulingClass=idle
+
+[Install]
+WantedBy=default.target

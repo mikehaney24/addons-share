@@ -1,0 +1,28 @@
+# systemd unit for the coordinator, if you would rather run it on a Linux box
+# than on the macOS home server.
+#
+#   sudo install -Dm644 packaging/wowsync-coordinator.service \
+#       /etc/systemd/system/wowsync-coordinator.service
+#   sudo systemctl enable --now wowsync-coordinator
+
+[Unit]
+Description=wowsync coordinator
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=wowsync
+Environment=WOWSYNC_STATE_DIR=/var/lib/wowsync
+ExecStart=/usr/local/bin/wowsync serve --host 0.0.0.0 --port 7373 --token CHANGE_ME
+Restart=always
+RestartSec=10
+
+StateDirectory=wowsync
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+
+[Install]
+WantedBy=multi-user.target
