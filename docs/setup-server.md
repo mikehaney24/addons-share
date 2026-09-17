@@ -70,7 +70,10 @@ You should get a small status page saying nobody is playing.
 ### Start it at boot
 
 ```sh
-sed -e "s|__WOWSYNC__|$(command -v wowsync)|g" \
+WOWSYNC="$(command -v wowsync || echo "$HOME/.local/bin/wowsync")"
+[ -x "$WOWSYNC" ] || { echo "run ./scripts/install.sh first"; return 2>/dev/null || exit 1; }
+
+sed -e "s|__WOWSYNC__|$WOWSYNC|g" \
     -e "s|__HOME__|$HOME|g" \
     -e "s|__TOKEN__|$TOKEN|g" \
     packaging/com.wowsync.coordinator.plist \
@@ -79,6 +82,11 @@ sed -e "s|__WOWSYNC__|$(command -v wowsync)|g" \
 launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.wowsync.coordinator.plist
 launchctl print gui/$(id -u)/com.wowsync.coordinator | head
 ```
+
+The check matters: `wowsync` lives in `~/.local/bin`, which is often not on
+`PATH` in a fresh shell. Without it, `$(command -v wowsync)` expands to nothing
+and you get a plist with an empty program path, which launchd rejects with a
+message that does not mention the real cause.
 
 A LaunchAgent runs when a user is logged in. On a headless home server, either
 enable automatic login (System Settings → Users & Groups → Automatic login), or
@@ -97,6 +105,11 @@ echo "0 4 * * 0 $HOME/wowsync/repos/wowsync-gc.sh" | crontab -
 
 Repacking never touches anything the clients depend on — only how the history
 is stored on disk.
+
+`setup-server.sh` bakes the absolute path of `git` into that script, because
+cron runs with a minimal `PATH` (`/usr/bin:/bin` on macOS) that does not
+include Homebrew. A bare `git` there would fail with `command not found` every
+week, in a mail nobody reads.
 
 ## What this costs
 

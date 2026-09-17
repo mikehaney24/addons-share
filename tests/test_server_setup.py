@@ -92,6 +92,54 @@ def test_the_maintenance_script_actually_repacks(tmp_path):
     assert "loose objects 40 -> 0" in proc.stdout
 
 
+def test_maintenance_runs_under_crons_minimal_path(tmp_path):
+    """cron does not get your login PATH.
+
+    On macOS cron runs with PATH=/usr/bin:/bin, which excludes Homebrew -- so a
+    bare `git` in the weekly script fails with `command not found`, in a mail
+    nobody reads. The script pins the absolute git found at setup time.
+    """
+    repo, _ = run_setup(tmp_path)
+    maintenance = tmp_path / "repos" / "wowsync-gc.sh"
+
+    for i in range(25):
+        subprocess.run(
+            ["git", "-C", str(repo), "hash-object", "-w", "--stdin"],
+            input=f"blob {i}\n", text=True, capture_output=True, check=True,
+        )
+
+    # A PATH with a shell and text tools but deliberately no git.
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    for tool in ("bash", "awk", "sed", "cat"):
+        found = shutil.which(tool)
+        if found:
+            (fake_bin / tool).symlink_to(found)
+    assert shutil.which("git", path=str(fake_bin)) is None
+
+    proc = subprocess.run(
+        [str(fake_bin / "bash"), str(maintenance)],
+        capture_output=True, text=True, env={"PATH": str(fake_bin)},
+    )
+    assert proc.returncode == 0, f"failed without git on PATH: {proc.stderr}"
+    assert loose_objects(repo) == 0
+    assert "loose objects 25 -> 0" in proc.stdout
+
+
+def test_setup_names_a_runnable_wowsync_path(tmp_path):
+    """Step 3 of the printed instructions has to be copy-pasteable.
+
+    setup-server.sh runs before install.sh, so `wowsync` may not exist yet and
+    is often not on PATH even once it does. Printing a bare `wowsync serve`
+    would be a command the user cannot run.
+    """
+    _, stdout = run_setup(tmp_path)
+    serve_line = next(l for l in stdout.splitlines() if "serve --port" in l)
+    command = serve_line.strip().split()[0]
+    assert command != "wowsync", "printed a bare command name, not a usable path"
+    assert command.startswith("/"), f"not an absolute path: {command}"
+
+
 def test_the_repository_accepts_a_wowsync_push(tmp_path, monkeypatch):
     """The server's output is only useful if a client can actually push to it."""
     from tests.conftest import make_game_dir, make_config
