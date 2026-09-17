@@ -44,9 +44,19 @@ cat > "$MAINT" <<GCEOF
 #!/usr/bin/env bash
 # Repack the wowsync repository. Safe to run at any time; it never touches
 # working state, only how the history is stored.
+#
+# Deliberately NOT 'gc --auto': this repository sets gc.auto=0 so a repack can
+# never fire in the middle of someone's push and stall a handoff. '--auto'
+# honours that setting, so it would exit 0 having done nothing at all.
+#
+# --keep-largest-pack folds loose objects and small packs into one without
+# rewriting the large base pack, which keeps the weekly run quick as history
+# grows. Older git without that flag falls back to a full repack.
 set -euo pipefail
-git -C "$REPO_PATH" gc --quiet --auto --keep-largest-pack || \\
-    git -C "$REPO_PATH" gc --quiet
+before=\$(git -C "$REPO_PATH" count-objects -v | awk '/^count:/ {print \$2}')
+git -C "$REPO_PATH" gc --quiet --keep-largest-pack || git -C "$REPO_PATH" gc --quiet
+after=\$(git -C "$REPO_PATH" count-objects -v | awk '/^count:/ {print \$2}')
+echo "wowsync-gc: loose objects \$before -> \$after"
 GCEOF
 chmod +x "$MAINT"
 
