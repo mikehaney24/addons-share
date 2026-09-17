@@ -156,6 +156,32 @@ saved global and keep just that part local — see
 
 No database, no cloud account, nothing listening on the public internet.
 
+### How it installs
+
+Nothing is compiled — wowsync is Python, and `wowsync` is a small launcher
+script generated at install time. `scripts/install.sh` puts it in a private
+virtual environment and links the command into place:
+
+```
+~/.local/share/wowsync/venv/     the interpreter and the code
+~/.local/bin/wowsync             a symlink to the launcher  ← put this on your PATH
+```
+
+The venv is not decoration. Homebrew's python and most distribution pythons
+are marked externally-managed, where installing into them is refused outright;
+and an isolated environment means a `brew upgrade` or a distribution update
+cannot change the interpreter under a running agent. You never have to activate
+it — the launcher points at the right python itself.
+
+You need `PATH` only for typing `wowsync` yourself. The background agent is
+registered with the full path, so it works either way. The installer prints the
+exact line to add if the directory is not already there.
+
+Re-running `./scripts/install.sh` upgrades in place. The code is copied into
+the venv rather than linked, so you can move or delete the clone afterwards.
+To remove it entirely: `rm -rf ~/.local/share/wowsync ~/.local/bin/wowsync`
+(after `launchctl bootout` / `systemctl --user disable --now wowsync`).
+
 ## How it is put together
 
 | | |

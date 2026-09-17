@@ -15,6 +15,12 @@ cd addons-share
 ./scripts/install.sh
 ```
 
+This installs into a private virtual environment at
+`~/.local/share/wowsync/venv` and links `~/.local/bin/wowsync`. Most
+distributions mark their system python externally-managed, which is why
+wowsync does not install into it. If `python3 -m venv` is missing, install
+`python3-venv` (Debian/Ubuntu) or `python3-virtualenv` (Fedora) first.
+
 ## 2. Find the game directory inside the prefix
 
 Through Steam, the game lives under the prefix for its app ID:

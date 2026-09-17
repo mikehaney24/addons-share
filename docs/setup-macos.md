@@ -9,8 +9,15 @@ cd addons-share
 ./scripts/install.sh
 ```
 
-If the script warns about `PATH`, add the directory it names to your shell
-profile (usually `~/Library/Python/3.11/bin`).
+Nothing is compiled. The installer puts wowsync in a private virtual
+environment under `~/.local/share/wowsync/venv` and links the command to
+`~/.local/bin/wowsync`. If it warns that `~/.local/bin` is not on your `PATH`,
+add the line it prints to `~/.zshrc` and open a new terminal.
+
+The private environment matters here: Homebrew's python is marked
+externally-managed, so installing into it directly is refused, and a `brew
+upgrade` could otherwise change the interpreter out from under a running
+agent.
 
 ## 2. Find the game directory
 

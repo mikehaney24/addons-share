@@ -4,42 +4,92 @@
 #
 #   ./scripts/install.sh              # install the command only
 #   ./scripts/install.sh --service    # also install and start the agent
+#
+# Nothing is compiled. wowsync is Python, and `wowsync` is a one-line launcher
+# script generated at install time. It is installed into a private virtual
+# environment so it cannot collide with -- or be broken by -- Homebrew, your
+# distribution's package manager, or any other Python you have.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WITH_SERVICE=0
 [ "${1:-}" = "--service" ] && WITH_SERVICE=1
 
-say() { printf '\n==> %s\n' "$*"; }
+WOWSYNC_HOME="${WOWSYNC_HOME:-$HOME/.local/share/wowsync}"
+VENV="$WOWSYNC_HOME/venv"
+BIN_DIR="${WOWSYNC_BIN_DIR:-$HOME/.local/bin}"
+WOWSYNC="$BIN_DIR/wowsync"
+
+say()  { printf '\n==> %s\n' "$*"; }
+die()  { printf 'error: %s\n' "$*" >&2; exit 1; }
+
+# -- prerequisites -------------------------------------------------------
 
 PYTHON="${PYTHON:-python3}"
-command -v "$PYTHON" >/dev/null || { echo "python3 is required" >&2; exit 1; }
-command -v git >/dev/null || { echo "git is required" >&2; exit 1; }
+command -v "$PYTHON" >/dev/null || die "python3 is required"
+command -v git >/dev/null || die "git is required (2.38 or newer)"
 
-VERSION="$("$PYTHON" -c 'import sys; print("%d.%d" % sys.version_info[:2])')"
-"$PYTHON" - <<'PYEOF' || { echo "python 3.11 or newer is required (found $VERSION)" >&2; exit 1; }
+"$PYTHON" -c 'import sys; sys.exit(0 if sys.version_info >= (3, 11) else 1)' || die \
+    "python 3.11 or newer is required (found $("$PYTHON" -c 'import platform; print(platform.python_version())'))"
+
+if ! "$PYTHON" -c 'import venv' 2>/dev/null; then
+    die "python's venv module is missing. On Debian/Ubuntu: sudo apt install python3-venv"
+fi
+
+GIT_VERSION="$(git --version | awk '{print $3}')"
+"$PYTHON" - "$GIT_VERSION" <<'PYEOF' || die "git 2.38 or newer is required (found $GIT_VERSION)"
 import sys
-sys.exit(0 if sys.version_info >= (3, 11) else 1)
+parts = []
+for piece in sys.argv[1].split("."):
+    digits = "".join(c for c in piece if c.isdigit())
+    parts.append(int(digits) if digits else 0)
+sys.exit(0 if tuple(parts[:2]) >= (2, 38) else 1)
 PYEOF
 
+# -- install -------------------------------------------------------------
+
+say "Creating the virtual environment at $VENV"
+# A venv sidesteps PEP 668: Homebrew's python and most distribution pythons are
+# marked externally-managed, where `pip install --user` refuses to run at all.
+mkdir -p "$WOWSYNC_HOME"
+"$PYTHON" -m venv --upgrade-deps "$VENV" >/dev/null 2>&1 || "$PYTHON" -m venv "$VENV"
+
 say "Installing wowsync from $HERE"
-"$PYTHON" -m pip install --user --upgrade "$HERE"
+# Not editable: the venv gets its own copy, so moving or deleting this clone
+# later cannot break a running agent.
+"$VENV/bin/python" -m pip install --quiet --upgrade "$HERE"
 
-BIN="$("$PYTHON" -c 'import site,os; print(os.path.join(site.USER_BASE, "bin"))')"
-export PATH="$BIN:$PATH"
-case ":$PATH:" in
-    *":$BIN:"*) ;;
-    *) echo "Note: add $BIN to your PATH." ;;
-esac
+say "Linking $WOWSYNC"
+mkdir -p "$BIN_DIR"
+ln -sf "$VENV/bin/wowsync" "$WOWSYNC"
 
-WOWSYNC="$BIN/wowsync"
-[ -x "$WOWSYNC" ] || WOWSYNC="$(command -v wowsync)"
-say "Installed: $WOWSYNC"
 "$WOWSYNC" --version
+
+# -- PATH ----------------------------------------------------------------
+
+if ! command -v wowsync >/dev/null 2>&1 || [ "$(command -v wowsync)" != "$WOWSYNC" ]; then
+    case "$(basename "${SHELL:-bash}")" in
+        zsh)  PROFILE="$HOME/.zshrc" ;;
+        bash) [ "$(uname -s)" = "Darwin" ] && PROFILE="$HOME/.bash_profile" || PROFILE="$HOME/.bashrc" ;;
+        fish) PROFILE="$HOME/.config/fish/config.fish" ;;
+        *)    PROFILE="your shell profile" ;;
+    esac
+    cat <<PATHEOF
+
+  $BIN_DIR is not on your PATH yet. Add it to $PROFILE:
+
+      export PATH="$BIN_DIR:\$PATH"
+
+  Then open a new terminal, or run it in this one to continue now.
+  (The background agent does not need this -- it is given the full path.)
+
+PATHEOF
+fi
+
+# -- service -------------------------------------------------------------
 
 if [ "$WITH_SERVICE" -eq 0 ]; then
     cat <<NEXT
-
 Next:
   $WOWSYNC init --remote ssh://USER@SERVER/path/to/forever.git \\
                 --server http://SERVER:7373 --token YOUR_TOKEN
@@ -76,7 +126,6 @@ Linux)
     say "Agent running. Logs: journalctl --user -u wowsync -f"
     ;;
 *)
-    echo "Unsupported platform for --service; run '$WOWSYNC daemon' yourself." >&2
-    exit 1
+    die "unsupported platform for --service; run '$WOWSYNC daemon' yourself"
     ;;
 esac
