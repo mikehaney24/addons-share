@@ -25,12 +25,52 @@ die()  { printf 'error: %s\n' "$*" >&2; exit 1; }
 
 # -- prerequisites -------------------------------------------------------
 
-PYTHON="${PYTHON:-python3}"
-command -v "$PYTHON" >/dev/null || die "python3 is required"
 command -v git >/dev/null || die "git is required (2.38 or newer)"
 
-"$PYTHON" -c 'import sys; sys.exit(0 if sys.version_info >= (3, 11) else 1)' || die \
-    "python 3.11 or newer is required (found $("$PYTHON" -c 'import platform; print(platform.python_version())'))"
+version_of() { "$1" -c 'import platform; print(platform.python_version())' 2>/dev/null; }
+is_supported() { "$1" -c 'import sys; sys.exit(0 if sys.version_info >= (3, 11) else 1)' 2>/dev/null; }
+
+# Look past whatever `python3` happens to resolve to. macOS still ships 3.9 as
+# /usr/bin/python3, and a perfectly good Homebrew or pyenv interpreter is often
+# installed but not first on PATH.
+find_python() {
+    local candidate resolved
+    for candidate in python3.14 python3.13 python3.12 python3.11 python3 \
+                     /opt/homebrew/bin/python3 /usr/local/bin/python3 \
+                     /opt/homebrew/bin/python3.12 /opt/homebrew/bin/python3.11; do
+        resolved="$(command -v "$candidate" 2>/dev/null || true)"
+        [ -n "$resolved" ] || { [ -x "$candidate" ] && resolved="$candidate"; }
+        [ -n "$resolved" ] || continue
+        if is_supported "$resolved"; then echo "$resolved"; return 0; fi
+    done
+    return 1
+}
+
+if [ -n "${PYTHON:-}" ]; then
+    command -v "$PYTHON" >/dev/null 2>&1 || [ -x "$PYTHON" ] || die "PYTHON=$PYTHON not found"
+    is_supported "$PYTHON" || die \
+        "PYTHON=$PYTHON is $(version_of "$PYTHON"); wowsync needs 3.11 or newer"
+elif ! PYTHON="$(find_python)"; then
+    NEWEST="$(version_of python3 || echo "none")"
+    cat >&2 <<PYHELP
+error: no Python 3.11 or newer found (the python3 on your PATH is $NEWEST).
+
+  Only one thing needs it: wowsync reads its config with 'tomllib', which
+  entered the standard library in 3.11. Everything else runs on older
+  versions -- but 3.9, which macOS ships, went end-of-life in October 2025,
+  so it is not a good host for a background agent.
+
+  On macOS:        brew install python@3.12
+  On Debian/Ubuntu: sudo apt install python3.12 python3.12-venv
+  On Fedora:       sudo dnf install python3.12
+
+  Already have a newer one somewhere? Point at it directly:
+      PYTHON=/path/to/python3.12 ./scripts/install.sh
+PYHELP
+    exit 1
+fi
+
+say "Using $PYTHON ($(version_of "$PYTHON"))"
 
 if ! "$PYTHON" -c 'import venv' 2>/dev/null; then
     die "python's venv module is missing. On Debian/Ubuntu: sudo apt install python3-venv"
