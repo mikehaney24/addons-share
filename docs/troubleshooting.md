@@ -117,6 +117,35 @@ ls -d AddOns Addons        # if both exist, move the contents into AddOns
 
 Then `wowsync sync` from Linux.
 
+## "no Python 3.11 or newer found" on macOS
+
+macOS ships Python 3.9 as `/usr/bin/python3`, and that is what a stock machine
+offers. Install a current one:
+
+```sh
+brew install python@3.12
+./scripts/install.sh
+```
+
+The installer looks for `python3.13`, `python3.12`, `python3.11` and the
+Homebrew locations before giving up, so an interpreter you already have but
+which is not first on `PATH` is found automatically. To choose one yourself:
+
+```sh
+PYTHON=/opt/homebrew/bin/python3.12 ./scripts/install.sh
+```
+
+Only one thing needs 3.11: wowsync reads its config with `tomllib`, which
+entered the standard library in that release. Everything else runs on older
+versions — but 3.9 reached end of life in October 2025, so it gets no security
+fixes, and Apple has been signalling the removal of its bundled python for
+years. Neither is a good foundation for something that runs in the background
+and manages settings you cannot easily rebuild.
+
+The interpreter wowsync installs against is the one its agent keeps using; it
+lives in a private virtual environment, so upgrading or removing other pythons
+later will not disturb it.
+
 ## Push is rejected or hangs
 
 ```sh

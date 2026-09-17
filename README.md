@@ -151,6 +151,11 @@ saved global and keep just that part local — see
 ## Requirements
 
 - Python 3.11 or newer, and git 2.38 or newer, on all three machines.
+  macOS ships 3.9, so `brew install python@3.12` there. Only the config
+  reader needs 3.11 (`tomllib`), but 3.9 has been end-of-life since October
+  2025 and is not a runtime to hand a background agent. The installer finds a
+  suitable interpreter even when it is not first on `PATH`; override with
+  `PYTHON=/path/to/python3.12 ./scripts/install.sh`.
 - SSH from each gaming machine to the home server.
 - Both gaming machines on the same network as the server.
 

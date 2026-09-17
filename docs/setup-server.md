@@ -6,7 +6,7 @@ playing. Neither is heavy — an idle Mac mini will not notice it.
 ## 1. Requirements
 
 ```sh
-brew install git python@3.11     # macOS ships neither at a version we can rely on
+brew install git python@3.12     # macOS ships neither at a version we can rely on
 git --version                    # need 2.38 or newer
 python3 --version                # need 3.11 or newer
 ```

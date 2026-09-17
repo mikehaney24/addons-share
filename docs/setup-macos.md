@@ -3,7 +3,7 @@
 ## 1. Install
 
 ```sh
-brew install git python@3.11
+brew install git python@3.12
 git clone https://github.com/mikehaney24/addons-share
 cd addons-share
 ./scripts/install.sh
